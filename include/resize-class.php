@@ -1,11 +1,5 @@
 <?php
 
-//$resizeObj = new resize(image_dir/image_name.image_extension);
-//$resizeObj -> resizeImage(width, height, option);
-//option -> exact, portrait, landscape, auto, crop
-//$resizeObj -> saveImage(image_dir/image_name.image_extension, 10);
-
-
 Class Resize {
 
     //Variables

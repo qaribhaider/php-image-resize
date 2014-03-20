@@ -1,4 +1,4 @@
-php-image-resize
-================
+Image resize
+=============
 
 Php image resize class

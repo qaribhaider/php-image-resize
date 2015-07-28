@@ -1,6 +1,6 @@
 <?php
 
-Class Resize {
+Class ImageResize {
 
     //Variables
     private $image;
@@ -223,5 +223,3 @@ Class Resize {
     }
 
 }
-
-?>

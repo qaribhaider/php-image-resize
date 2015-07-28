@@ -31,10 +31,12 @@ $resize_quality = 100;
 $resize = new ImageResize($image, $uploadedfile);
 
 // Resize image
-$resize->resizeImage($resize_width, $resize_height, $resize_option);
+$resize->resize($resize_width, $resize_height, $resize_option);
+
+$resize->resize(150, 120, "auto");
 
 // Save image
-$resize->saveImage($resize_path . $resize_filename . "." . $resize_extension, $resize_quality);
+$resize->save($resize_path . $resize_filename . "." . $resize_extension, $resize_quality);
 
 // All Done
 $image_resized = $resize_path . $resize_filename . "." . $resize_extension;

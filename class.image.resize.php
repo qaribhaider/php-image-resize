@@ -1,225 +1,151 @@
 <?php
 
-Class ImageResize {
+require dirname(__FILE__) . '/class.image.php';
 
-    //Variables
-    private $image;
+Class ImageResize extends Image {
+
     private $width;
     private $height;
-    private $imageResized;
-    private $imageAplha;
+    private $image_resized;
+    private $image_aplha;
 
-    function __construct($fileName, $tmpFile = NULL) {
-        //Open Image
-        $this->image = $this->openImage($fileName, $tmpFile);
-
-        if (!$this->image) {
-            die("Error opening image file");
-        }
-
-        //Get width and height
-        $this->width = imagesx($this->image);
-        $this->height = imagesy($this->image);
+    function __construct($file, $tmp_file = NULL) {
+        parent::open($file, $tmp_file);
+        $this->width = parent::getWidth();
+        $this->height = parent::getHeight();
+        $this->image_aplha = parent::hasAplha();
     }
 
-    private function openImage($file, $tmpFile = NULL) {
-        //Get extension
-        $extension = strtolower(pathinfo($file, PATHINFO_EXTENSION));
+    public function resize($new_width, $new_height, $option = "auto") {
+        // Get optimal width and height ( based on option )
+        $option_array = $this->getDimensions($new_width, $new_height, $option);
 
-        if ($tmpFile != NULL) {
-            $cfile = $tmpFile;
-        } else {
-            $cfile = $file;
+        $optimal_width = $option_array['optimal_width'];
+        $optimal_height = $option_array['optimal_height'];
+
+        // Resample - Create image canvas of w, h size
+        $this->image_resized = imagecreatetruecolor($optimal_width, $optimal_height);
+
+        if ($this->image_aplha) {
+            imagealphablending($this->image_resized, false);
+            imagesavealpha($this->image_resized, true);
         }
 
-        switch ($extension) {
-            case 'jpg':
-            case 'jpeg':
-                $img = @imagecreatefromjpeg($cfile);
-                $this->imageAplha = false;
-                break;
-            case 'gif':
-                $img = @imagecreatefromgif($cfile);
-                $this->imageAplha = false;
-                break;
-            case 'png':
-                $img = @imagecreatefrompng($cfile);
-                imagealphablending($img, true);
-                $this->imageAplha = true;
-                break;
-            default:
-                $img = false;
-                break;
-        }
-        return $img;
-    }
+        imagecopyresampled($this->image_resized, $this->image, 0, 0, 0, 0, $optimal_width, $optimal_height, $this->width, $this->height);
 
-    public function resizeImage($newWidth, $newHeight, $option = "auto") {
-        //Get optimal width and height ( based on option )
-        $optionArray = $this->getDimensions($newWidth, $newHeight, $option);
-
-        $optimalWidth = $optionArray['optimalWidth'];
-        $optimalHeight = $optionArray['optimalHeight'];
-
-
-        //Resample - Create image canvas of w, h size
-        $this->imageResized = imagecreatetruecolor($optimalWidth, $optimalHeight);
-
-        if ($this->imageAplha) {
-
-            imagealphablending($this->imageResized, false);
-            imagesavealpha($this->imageResized, true);
-        }
-
-        imagecopyresampled($this->imageResized, $this->image, 0, 0, 0, 0, $optimalWidth, $optimalHeight, $this->width, $this->height);
-
-
-        //If CROP
+        // If CROP
         if ($option == 'crop') {
-            $this->crop($optimalWidth, $optimalHeight, $newWidth, $newHeight);
+            $this->crop($optimal_width, $optimal_height, $new_width, $new_height);
         }
+
+        $this->image = $this->image_resized;
+
+        return $this->image;
     }
 
-    private function getDimensions($newWidth, $newHeight, $option) {
-
+    private function getDimensions($new_width, $new_height, $option) {
         switch ($option) {
             case 'exact':
-                $optimalWidth = $newWidth;
-                $optimalHeight = $newHeight;
+                $optimal_width = $new_width;
+                $optimal_height = $new_height;
                 break;
             case 'portrait':
-                $optimalWidth = $this->getSizeByFixedHeight($newHeight);
-                $optimalHeight = $newHeight;
+                $optimal_width = $this->getSizeByFixedHeight($new_height);
+                $optimal_height = $new_height;
                 break;
             case 'landscape':
-                $optimalWidth = $newWidth;
-                $optimalHeight = $this->getSizeByFixedWidth($newWidth);
+                $optimal_width = $new_width;
+                $optimal_height = $this->getSizeByFixedWidth($new_width);
                 break;
             case 'auto':
-                $optionArray = $this->getSizeByAuto($newWidth, $newHeight);
-                $optimalWidth = $optionArray['optimalWidth'];
-                $optimalHeight = $optionArray['optimalHeight'];
+                $option_array = $this->getSizeByAuto($new_width, $new_height);
+                $optimal_width = $option_array['optimal_width'];
+                $optimal_height = $option_array['optimal_height'];
                 break;
             case 'crop':
-                $optionArray = $this->getOptimalCrop($newWidth, $newHeight);
-                $optimalWidth = $optionArray['optimalWidth'];
-                $optimalHeight = $optionArray['optimalHeight'];
+                $option_array = $this->getOptimalCrop($new_width, $new_height);
+                $optimal_width = $option_array['optimal_width'];
+                $optimal_height = $option_array['optimal_height'];
                 break;
+            default:
+                echo 'Option "' . $option . '" not defined ';
+                exit;
         }
-        return array('optimalWidth' => $optimalWidth, 'optimalHeight' => $optimalHeight);
+        return array('optimal_width' => $optimal_width, 'optimal_height' => $optimal_height);
     }
 
-    private function getSizeByFixedHeight($newHeight) {
+    private function getSizeByFixedHeight($new_height) {
         $ratio = $this->width / $this->height;
-        $newWidth = $newHeight * $ratio;
-        return $newWidth;
+        $new_width = $new_height * $ratio;
+        return $new_width;
     }
 
-    private function getSizeByFixedWidth($newWidth) {
+    private function getSizeByFixedWidth($new_width) {
         $ratio = $this->height / $this->width;
-        $newHeight = $newWidth * $ratio;
-        return $newHeight;
+        $new_height = $new_width * $ratio;
+        return $new_height;
     }
 
-    private function getSizeByAuto($newWidth, $newHeight) {
+    private function getSizeByAuto($new_width, $new_height) {
         if ($this->height < $this->width) {
             //Image to be resized is wider (landscape)
-            $optimalWidth = $newWidth;
-            $optimalHeight = $this->getSizeByFixedWidth($newWidth);
+            $optimal_width = $new_width;
+            $optimal_height = $this->getSizeByFixedWidth($new_width);
         } elseif ($this->height > $this->width) {
             //Image to be resized is taller (portrait)
-            $optimalWidth = $this->getSizeByFixedHeight($newHeight);
-            $optimalHeight = $newHeight;
+            $optimal_width = $this->getSizeByFixedHeight($new_height);
+            $optimal_height = $new_height;
         } else {
             //Image to be resizerd is a square
-            if ($newHeight < $newWidth) {
-                $optimalWidth = $newWidth;
-                $optimalHeight = $this->getSizeByFixedWidth($newWidth);
-            } else if ($newHeight > $newWidth) {
-                $optimalWidth = $this->getSizeByFixedHeight($newHeight);
-                $optimalHeight = $newHeight;
+            if ($new_height < $new_width) {
+                $optimal_width = $new_width;
+                $optimal_height = $this->getSizeByFixedWidth($new_width);
+            } else if ($new_height > $new_width) {
+                $optimal_width = $this->getSizeByFixedHeight($new_height);
+                $optimal_height = $new_height;
             } else {
                 //Sqaure being resized to a square
-                $optimalWidth = $newWidth;
-                $optimalHeight = $newHeight;
+                $optimal_width = $new_width;
+                $optimal_height = $new_height;
             }
         }
 
-        return array('optimalWidth' => $optimalWidth, 'optimalHeight' => $optimalHeight);
+        return array('optimal_width' => $optimal_width, 'optimal_height' => $optimal_height);
     }
 
-    private function getOptimalCrop($newWidth, $newHeight) {
+    private function getOptimalCrop($new_width, $new_height) {
 
-        $heightRatio = $this->height / $newHeight;
-        $widthRatio = $this->width / $newWidth;
+        $height_ratio = $this->height / $new_height;
+        $width_ratio = $this->width / $new_width;
 
-        if ($heightRatio < $widthRatio) {
-            $optimalRatio = $heightRatio;
+        if ($height_ratio < $width_ratio) {
+            $optimal_ratio = $height_ratio;
         } else {
-            $optimalRatio = $widthRatio;
+            $optimal_ratio = $width_ratio;
         }
 
-        $optimalHeight = $this->height / $optimalRatio;
-        $optimalWidth = $this->width / $optimalRatio;
+        $optimal_height = $this->height / $optimal_ratio;
+        $optimal_width = $this->width / $optimal_ratio;
 
-        return array('optimalWidth' => $optimalWidth, 'optimalHeight' => $optimalHeight);
+        return array('optimal_width' => $optimal_width, 'optimal_height' => $optimal_height);
     }
 
-    private function crop($optimalWidth, $optimalHeight, $newWidth, $newHeight) {
+    private function crop($optimal_width, $optimal_height, $new_width, $new_height) {
         //Find center - this will be used for the crop
-        $cropStartX = ( $optimalWidth / 2) - ( $newWidth / 2 );
-        $cropStartY = ( $optimalHeight / 2) - ( $newHeight / 2 );
+        $crop_start_x = ( $optimal_width / 2) - ( $new_width / 2 );
+        $crop_start_y = ( $optimal_height / 2) - ( $new_height / 2 );
 
-        $crop = $this->imageResized;
+        $crop = $this->image_resized;
 
         //Now crop from center to exact requested size
-        $this->imageResized = imagecreatetruecolor($newWidth, $newHeight);
+        $this->image_resized = imagecreatetruecolor($new_width, $new_height);
 
-        if ($this->imageAplha) {
-
-            imagealphablending($this->imageResized, false);
-            imagesavealpha($this->imageResized, true);
+        if ($this->image_aplha) {
+            imagealphablending($this->image_resized, false);
+            imagesavealpha($this->image_resized, true);
         }
 
-        imagecopyresampled($this->imageResized, $crop, 0, 0, $cropStartX, $cropStartY, $newWidth, $newHeight, $newWidth, $newHeight);
-    }
-
-    public function saveImage($savePath, $imageQuality = "100") {
-        //Get extension
-        $extension = strtolower(pathinfo($savePath, PATHINFO_EXTENSION));
-
-        switch ($extension) {
-            case 'jpg':
-            case 'jpeg':
-                if (imagetypes() & IMG_JPG) {
-                    imagejpeg($this->imageResized, $savePath, $imageQuality);
-                }
-                break;
-
-            case 'gif':
-                if (imagetypes() & IMG_GIF) {
-                    imagegif($this->imageResized, $savePath);
-                }
-                break;
-
-            case 'png':
-                //Scale quality from 0-100 to 0-9
-                $scaleQuality = round(($imageQuality / 100) * 9);
-
-                //Invert quality setting as 0 is best, not 9
-                $invertScaleQuality = 9 - $scaleQuality;
-
-                if (imagetypes() & IMG_PNG) {
-                    imagepng($this->imageResized, $savePath, $invertScaleQuality);
-                }
-                break;
-
-            default:
-                //No extension - No save.
-                break;
-        }
-
-        imagedestroy($this->imageResized);
+        imagecopyresampled($this->image_resized, $crop, 0, 0, $crop_start_x, $crop_start_y, $new_width, $new_height, $new_width, $new_height);
     }
 
 }
